@@ -3,6 +3,7 @@ Core pipeline utilities for image editing operations.
 """
 import os
 import subprocess
+import signal
 import json
 import yaml
 import platform
@@ -57,18 +58,18 @@ def get_gimp_command(config: dict) -> List[str]:
     
     if system == "linux" and "flatpak" in gimp_path:
         return gimp_path.split() + [
+            "--quit",
             "-idf",
             "--batch-interpreter", config["gimp"]["batch_interpreter"],
             "-b", f"import sys;sys.path=['{current_dir}','{image_ops_path}']+sys.path;exec(open('{image_ops_path}/gimp_pipeline.py').read())",
-            "-b", "pdb.gimp_quit(1)"
         ]
     else:
         return [
             gimp_path,
-            "-idf", 
+            "--quit",
+            "-idf",
             "--batch-interpreter", config["gimp"]["batch_interpreter"],
             "-b", f"import sys;sys.path=['{current_dir}','{image_ops_path}']+sys.path;exec(open('{image_ops_path}/gimp_pipeline.py').read())",
-            "-b", "pdb.gimp_quit(1)"
         ]
 
 
@@ -99,8 +100,13 @@ def update_pipeline_file_paths(
         raise
 
 
-def execute_gimp_pipeline(config: Optional[dict] = None) -> None:
-    """Execute the GIMP pipeline with current configuration."""
+def execute_gimp_pipeline(config: Optional[dict] = None) -> bool:
+    """
+    Execute the GIMP pipeline with current configuration.
+
+    Returns:
+        True on successful execution, False on timeout/failure.
+    """
     if config is None:
         config = load_pipeline_config()
     
@@ -112,8 +118,59 @@ def execute_gimp_pipeline(config: Optional[dict] = None) -> None:
     command = get_gimp_command(config)
     env = os.environ.copy()
     env["PYTHONWARNINGS"] = config["gimp"]["python_warnings"]
-    
-    subprocess.run(command, env=env)
+    timeout_seconds = int(config.get("processing", {}).get("timeout_seconds", 120))
+
+    try:
+        # start_new_session allows us to terminate the full process tree on timeout.
+        process = subprocess.Popen(
+            command,
+            env=env,
+            start_new_session=(os.name != "nt"),
+        )
+    except Exception as exc:
+        print(f"Failed to launch GIMP pipeline: {exc}")
+        return False
+
+    try:
+        process.wait(timeout=timeout_seconds if timeout_seconds > 0 else None)
+    except subprocess.TimeoutExpired:
+        print(
+            f"GIMP pipeline timed out after {timeout_seconds}s. "
+            "Terminating process tree and continuing with non-GIMP output."
+        )
+        _terminate_process_tree(process)
+        return False
+
+    if process.returncode != 0:
+        print(f"GIMP pipeline exited with code {process.returncode}.")
+        return False
+
+    return True
+
+
+def _terminate_process_tree(process: subprocess.Popen) -> None:
+    """Best-effort termination for a timed-out subprocess and its children."""
+    if process.poll() is not None:
+        return
+
+    try:
+        if os.name == "nt":
+            process.terminate()
+        else:
+            os.killpg(process.pid, signal.SIGTERM)
+        process.wait(timeout=5)
+        return
+    except Exception:
+        pass
+
+    try:
+        if os.name == "nt":
+            process.kill()
+        else:
+            os.killpg(process.pid, signal.SIGKILL)
+        process.wait(timeout=5)
+    except Exception:
+        pass
 
 
 def flip_json_signs(file_path: str) -> None:

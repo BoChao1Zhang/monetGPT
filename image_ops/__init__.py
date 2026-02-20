@@ -28,7 +28,7 @@ try:
 except ImportError:
     pass  # Expected when in GIMP environment or missing dependencies
 
-# Try to import GIMP operations (requires gimpfu)
+# Try to import GIMP operations (requires gi.repository.Gimp)
 try:
     from .gimp_ops import *
     from .gimp_pipeline import *

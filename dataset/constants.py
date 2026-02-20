@@ -61,9 +61,19 @@ AVAILABLE_OPERATIONS = {
 # Operation descriptions for puzzle 3
 OPERATION_MAP = {
     "white-balance-tone-contrast": "**Exposure, Contrast & Tonal Range Adjustments** \n These parameters primarily affect the image's overall exposure, contrast, and distribution of tones (shadows, whites, blacks, and highlights). \n Operation selection available: [Blacks, Contrast, Highlights, Shadows, Whites, Exposure]",
-    "color-temperature": "**White Balance & Global Saturation** \n These parameters adjust the photo's global color temperature (warmth/coolness), tint (green/magenta), and overall color intensity (saturation). \nOperation selection available: [Temperature, Tint, Saturation]", 
-    "hsl": "**Selective Color Adjustments** \n These parameters allow fine-grained control over specific color ranges in the image, adjusting hue, saturation, or luminance for each color individually. \nOperation selection available: [HueAdjustmentAqua, HueAdjustmentBlue, HueAdjustmentGreen, HueAdjustmentYellow, HueAdjustmentRed, HueAdjustmentMagenta, HueAdjustmentOrange, HueAdjustmentPurple, LuminanceAdjustmentAqua, LuminanceAdjustmentBlue, LuminanceAdjustmentGreen, LuminanceAdjustmentYellow, LuminanceAdjustmentRed, LuminanceAdjustmentOrange, LuminanceAdjustmentMagenta, LuminanceAdjustmentPurple, SaturationAdjustmentAqua, SaturationAdjustmentBlue, SaturationAdjustmentGreen, SaturationAdjustmentYellow, SaturationAdjustmentMagenta, SaturationAdjustmentOrange, SaturationAdjustmentPurple, SaturationAdjustmentRed]. \nYou should only pick a few of these which are relevant for the image (You don't have to use all)"
+    "color-temperature": "**White Balance & Global Saturation** \n These parameters adjust the photo's global color temperature (warmth/coolness), tint (green/magenta), and overall color intensity (saturation). \nOperation selection available: [Temperature, Tint, Saturation]",
+    "hsl": "**Selective Color Adjustments** \n These parameters allow fine-grained control over specific color ranges in the image, adjusting hue, saturation, or luminance for each color individually. \nOperation selection available: [HueAdjustmentAqua, HueAdjustmentBlue, HueAdjustmentGreen, HueAdjustmentYellow, HueAdjustmentRed, HueAdjustmentMagenta, HueAdjustmentOrange, HueAdjustmentPurple, LuminanceAdjustmentAqua, LuminanceAdjustmentBlue, LuminanceAdjustmentGreen, LuminanceAdjustmentYellow, LuminanceAdjustmentRed, LuminanceAdjustmentOrange, LuminanceAdjustmentMagenta, LuminanceAdjustmentPurple, SaturationAdjustmentAqua, SaturationAdjustmentBlue, SaturationAdjustmentGreen, SaturationAdjustmentYellow, SaturationAdjustmentMagenta, SaturationAdjustmentOrange, SaturationAdjustmentPurple, SaturationAdjustmentRed]. \nYou should only pick a few of these which are relevant for the image (You don't have to use all)",
+    "local-editing": "**Local/Regional Adjustments** \n Region-specific adjustments applied to semantic areas (skin, sky, hair, background, vegetation) or luminance-based zones. Each adjustment targets a single region with a single operation for precise control. \nOperation selection available: [brightness, contrast, saturation, temperature, tint, vibrance, highlights, shadows, whites, blacks, dehaze, exposure]",
 }
+
+# Multi-turn trajectory types (for puzzle_mt data generation)
+MULTI_TURN_TYPES = [
+    "global_init",       # Initial global adjustments (exposure, WB, contrast)
+    "global_refine",     # Refine/correct global adjustments (fix overexposure, etc.)
+    "local_edit",        # Local/regional edits (skin, sky, etc.)
+    "rollback_correct",  # Undo previous step + apply alternative
+    "style_shift",       # Switch editing style (balanced → vibrant, etc.)
+]
 
 
 # Summary mapping for puzzle 3
@@ -84,5 +94,11 @@ Provide a concise explanation of the intended editing goal and the desired mood 
 
 The original image shows [describe specific color issues: oversaturated reds, dull greens, mismatched blues], which affects the overall harmony of the scene. Since it depicts [describe subject: a garden landscape, a fashion shoot, a neon-lit city street], the editing should target individual colors without altering the entire tone.
 To achieve this, adjustments like [list relevant operations: adjusting hue for more natural skin tones, increasing saturation for a vibrant sky, lowering luminance of intense reds] will help create the intended effect of [describe final mood/look: balanced and cohesive, stylized and artistic, subtle and understated, etc.].
-"""
+""",
+    "local-editing": """**Local/Regional Adjustments**
+Provide a concise explanation of the intended editing goal for each semantic region, clearly comparing the original image's regional characteristics with the edited version, and explaining why targeted local adjustments are needed instead of global ones. Structure it as:
+
+The original image has [describe region-specific issues: overexposed sky, underlit skin tones, dull vegetation], which require targeted corrections that would be impossible with global adjustments alone. Since it depicts [describe scene and regions], the editing should isolate specific areas using semantic masks.
+To achieve this, adjustments targeting [list regions and operations: reducing brightness on the sky, warming skin tones, boosting vegetation saturation] will create the intended effect of [describe final result: balanced exposure across regions, natural skin rendering, vibrant yet cohesive scene].
+""",
 }

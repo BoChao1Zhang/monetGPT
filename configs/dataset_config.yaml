@@ -25,6 +25,13 @@ puzzles:
     images_query_path: "./data/puzzles3/images2/*/*.png"
     output_file: "data/sharegpt_puzzle_3.json"
 
+  puzzle_c:
+    reasoning_path: "./data/puzzle_c/reasoning/*.txt"
+    images_path: "./data/puzzle_c/images/*.tif"
+    images_base_path: "./data/puzzle_c/images"
+    images_query_path: "./data/puzzle_c/images/*_stitch.png"
+    output_file: "data/sharegpt_puzzle_c.json"
+
 # Puzzle image generation configuration
 generation:
   num_standard_trials: 2
@@ -34,6 +41,7 @@ generation:
     puzzle1: "data/puzzles1/configs"
     puzzle2: "data/puzzles2/configs"
     puzzle3: "data/puzzles3/configs"
+    puzzle_c: "data/puzzle_c/configs"
 
   image_sources:
     ppr10k_source: "data/ppr10k/source/*.png"

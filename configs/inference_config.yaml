@@ -46,20 +46,26 @@ operations:
     name: "**Selective Color Adjustments**"
     description: "These parameters allow fine-grained control over specific color ranges in the image, adjusting hue, saturation, or luminance for each color individually."
     available: [
-      "HueAdjustmentAqua", "HueAdjustmentBlue", "HueAdjustmentGreen", "HueAdjustmentYellow", 
+      "HueAdjustmentAqua", "HueAdjustmentBlue", "HueAdjustmentGreen", "HueAdjustmentYellow",
       "HueAdjustmentRed", "HueAdjustmentMagenta", "HueAdjustmentOrange", "HueAdjustmentPurple",
-      "LuminanceAdjustmentAqua", "LuminanceAdjustmentBlue", "LuminanceAdjustmentGreen", 
-      "LuminanceAdjustmentYellow", "LuminanceAdjustmentRed", "LuminanceAdjustmentOrange", 
+      "LuminanceAdjustmentAqua", "LuminanceAdjustmentBlue", "LuminanceAdjustmentGreen",
+      "LuminanceAdjustmentYellow", "LuminanceAdjustmentRed", "LuminanceAdjustmentOrange",
       "LuminanceAdjustmentMagenta", "LuminanceAdjustmentPurple",
-      "SaturationAdjustmentAqua", "SaturationAdjustmentBlue", "SaturationAdjustmentGreen", 
-      "SaturationAdjustmentYellow", "SaturationAdjustmentMagenta", "SaturationAdjustmentOrange", 
+      "SaturationAdjustmentAqua", "SaturationAdjustmentBlue", "SaturationAdjustmentGreen",
+      "SaturationAdjustmentYellow", "SaturationAdjustmentMagenta", "SaturationAdjustmentOrange",
       "SaturationAdjustmentPurple", "SaturationAdjustmentRed"
     ]
     note: "You should only pick a few of these which are relevant for the image (You don't have to use all)"
 
+  local-editing:
+    name: "**Local/Regional Adjustments**"
+    description: "Region-specific adjustments applied to semantic areas (skin, sky, hair, background, vegetation) or luminance-based zones (highlights, shadows, midtones). Each adjustment targets a single region with a single operation for precise control."
+    available: ["brightness", "contrast", "saturation", "temperature", "tint", "vibrance", "highlights", "shadows", "whites", "blacks", "dehaze", "exposure"]
+    note: "Output is a JSON array of local edit specs. Focus on 2-5 of the most impactful regional adjustments."
+
 # Processing Configuration
 processing:
-  operations_sequence: ["white-balance-tone-contrast", "color-temperature", "hsl"]
+  operations_sequence: ["white-balance-tone-contrast", "color-temperature", "hsl", "local-editing"]
   save_after_each_stage: false
   replace_existing: true
   
@@ -80,3 +86,9 @@ intensity_legend:
   "61-72": "Significant"
   "73-84": "Very Significant"
   "85-100": "Extremely Intense"
+
+# Agent System Configuration (used by agent/ package)
+agent:
+  planner_temperature: 0.2
+  quality_temperature: 0.1
+  max_sub_goals: 6

@@ -1,4 +1,4 @@
-from gimpfu import *
+from image_ops.gimp3_compat import load_image, save_image
 from image_ops.gimp_ops import *
 import warnings
 import json
@@ -29,15 +29,13 @@ output_image_path = './ppr10k/export/temp.png'
 def execute(image_path, output_path):
     try:
         print("Loading image:", image_path)
-        image = pdb.gimp_file_load(image_path, image_path)
-        image = gimp.image_list()[0]
-        drawable = pdb.gimp_image_get_active_drawable(image)
+        image, drawable = load_image(image_path)
         print("Image loaded successfully")
-        
+
         print("Reading config:", config_path)
         config = read_config(config_path)
         print("Config loaded:", config)
-        
+
         for op, intensity in config.items():
             if op in core_pipeline.keys():
                 operation = core_pipeline[op]
@@ -46,11 +44,11 @@ def execute(image_path, output_path):
         whites = config.get("Whites", 0)
         if whites != 0:
             adjust_light(drawable,0,0,whites)
-        
+
         print("Saving image to:", output_path)
-        pdb.gimp_file_save(image, drawable, output_path, output_path)
+        save_image(image, output_path)
         print("Image saved successfully")
-        
+
     except Exception as e:
         print("Error in execute function:", str(e))
         import traceback

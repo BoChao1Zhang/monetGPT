@@ -395,18 +395,21 @@ def query_puzzle3(range_a, range_b, config_path="configs/dataset_config.yaml"):
 def main():
     """Main function for command line usage."""
     parser = argparse.ArgumentParser(description="Query LLM for puzzle reasoning.")
-    parser.add_argument("puzzle_type", type=str, choices=["1", "2", "3"], help="Puzzle type to query.")
+    parser.add_argument("puzzle_type", type=str, choices=["1", "2", "3", "c"], help="Puzzle type to query.")
     parser.add_argument("range_a", type=int, help="Start index of the range.")
     parser.add_argument("range_b", type=int, help="End index of the range.")
     parser.add_argument("--config", type=str, default="configs/dataset_config.yaml", help="Config file path.")
     args = parser.parse_args()
-    
+
     if args.puzzle_type == "1":
         query_puzzle1(args.range_a, args.range_b, args.config)
     elif args.puzzle_type == "2":
         query_puzzle2(args.range_a, args.range_b, args.config)
     elif args.puzzle_type == "3":
         query_puzzle3(args.range_a, args.range_b, args.config)
+    elif args.puzzle_type == "c":
+        from .query_llm_local import query_puzzle_c
+        query_puzzle_c(args.range_a, args.range_b, args.config)
 
 
 if __name__ == "__main__":

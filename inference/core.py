@@ -209,6 +209,104 @@ Based on the editing plan and the original image, tell the **optimal** adjustmen
             print(f"Error parsing JSON from response: {e}")
             return {}
 
+    def extract_json_array_from_response(self, response: str) -> list:
+        """Extract and parse a JSON array from LLM response (for local-editing stage)."""
+        import re
+
+        if not isinstance(response, str):
+            return []
+
+        try:
+            text = response.strip()
+
+            # 1) Fast path: response is exactly a JSON array.
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+        # 2) Try fenced code blocks first (```json ... ``` or ``` ... ```).
+        fence_pattern = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.IGNORECASE)
+        fenced_blocks = [m.group(1).strip() for m in fence_pattern.finditer(response)]
+        for block in fenced_blocks:
+            try:
+                parsed = json.loads(block)
+                if isinstance(parsed, list):
+                    return parsed
+            except json.JSONDecodeError:
+                continue
+
+        # 3) Robust scan: find the first decodable JSON array anywhere in text.
+        text = response.strip()
+        decoder = json.JSONDecoder()
+        for i, ch in enumerate(text):
+            if ch != "[":
+                continue
+            try:
+                obj, _ = decoder.raw_decode(text[i:])
+                if isinstance(obj, list):
+                    return obj
+            except json.JSONDecodeError:
+                continue
+
+        print("No decodable JSON array found in response.")
+        return []
+
+    def query_structured(
+        self,
+        image_path: str,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.2,
+        original_image_path: str = "",
+    ) -> str:
+        """
+        General-purpose structured VLM query for planner/quality nodes.
+
+        Args:
+            image_path: Path to the (current) image to analyze.
+            system_prompt: System message for the VLM.
+            user_prompt: User-turn text prompt.
+            temperature: Sampling temperature.
+            original_image_path: If provided, sends both original and current images
+                                 (used by quality node for before/after comparison).
+
+        Returns:
+            Raw text response from the VLM.
+        """
+        # Build image content blocks
+        image_content = []
+        if original_image_path and os.path.exists(original_image_path):
+            encoded_original = self.encode_image_to_base64(original_image_path)
+            image_content.append(
+                {"type": "image_url", "image_url": {"url": encoded_original}}
+            )
+        if image_path and os.path.exists(image_path):
+            encoded_current = self.encode_image_to_base64(image_path)
+            image_content.append(
+                {"type": "image_url", "image_url": {"url": encoded_current}}
+            )
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": user_prompt},
+                    *image_content,
+                ],
+            },
+        ]
+
+        result = self.client.chat.completions.create(
+            messages=messages,
+            model=self.config["api"]["model"],
+            temperature=temperature,
+        )
+
+        return result.choices[0].message.content
+
     def adjustments_to_text(self, adjustments: dict) -> str:
         """Convert adjustments dictionary to human-readable text."""
         if not adjustments:
@@ -302,6 +400,17 @@ class StagedEditingPipeline:
             # Get extra instruction for this operation
             extra_instruction = extra_instructions.get(operation, "")
 
+            # --- Local-editing stage uses different prompts and parsing ---
+            if operation == "local-editing":
+                all_reasoning, local_applied = self._process_local_editing_stage(
+                    stage, current_image_path, stage_output_path,
+                    output_base_path, extra_instruction, style,
+                    all_reasoning, final_adjustments,
+                )
+                if local_applied and os.path.exists(stage_output_path):
+                    current_image_path = stage_output_path
+                continue
+
             # Query LLM for adjustments
             outputs, is_editing_needed = (
                 self.inference_engine.query_llm_for_adjustments(
@@ -368,6 +477,100 @@ class StagedEditingPipeline:
         print(self.inference_engine.adjustments_to_text(final_adjustments))
 
         return current_image_path, final_adjustments, all_reasoning
+
+    def _process_local_editing_stage(
+        self,
+        stage: int,
+        current_image_path: str,
+        stage_output_path: str,
+        output_base_path: str,
+        extra_instruction: str,
+        style: str,
+        all_reasoning: str,
+        final_adjustments: dict,
+    ) -> Tuple[str, bool]:
+        """Handle the local-editing stage with specialized prompts and JSON array parsing."""
+        from inference.prompts_local import (
+            create_local_analysis_prompt,
+            create_local_json_prompt,
+        )
+
+        style_instruction = self.inference_engine._get_style_instruction(style)
+
+        # Encode image
+        encoded_image = self.inference_engine.encode_image_to_base64(current_image_path)
+
+        # Round 1: Regional analysis
+        analysis_prompt = create_local_analysis_prompt(style_instruction, extra_instruction)
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful advanced image-editing assistant with expertise in Adobe Lightroom and regional/local photo editing.",
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": analysis_prompt},
+                    {"type": "image_url", "image_url": {"url": encoded_image}},
+                ],
+            },
+        ]
+
+        print("Sending local-editing analysis request...")
+        result = self.inference_engine.client.chat.completions.create(
+            messages=messages,
+            model=self.inference_engine.config["api"]["model"],
+            temperature=self.inference_engine.config["api"]["temperature"],
+        )
+        analysis_output = result.choices[0].message.content
+        print("Local analysis result:", analysis_output)
+
+        if "**no further adjustments are needed**" in analysis_output.lower():
+            all_reasoning += f"\n\n=== Stage {stage + 1}: local-editing ===\n\n{analysis_output}"
+            return all_reasoning, False
+
+        # Round 2: JSON array generation
+        json_prompt = create_local_json_prompt(style_instruction, extra_instruction)
+        messages.append({"role": "assistant", "content": analysis_output})
+        messages.append(
+            {"role": "user", "content": [{"type": "text", "text": json_prompt}]}
+        )
+
+        result = self.inference_engine.client.chat.completions.create(
+            messages=messages,
+            model=self.inference_engine.config["api"]["model"],
+            temperature=self.inference_engine.config["api"]["temperature"],
+        )
+        json_output = result.choices[0].message.content
+        print("Local JSON result:", json_output)
+
+        # Accumulate reasoning
+        all_reasoning += (
+            f"\n\n=== Stage {stage + 1}: local-editing ===\n\n"
+            f"{analysis_output}\n\n{json_output}"
+        )
+
+        # Parse JSON array
+        local_specs = self.inference_engine.extract_json_array_from_response(json_output)
+        if not local_specs:
+            print("No local edits extracted, skipping local-editing stage.")
+            return all_reasoning, False
+
+        # Save local config as JSON array
+        stage_config_path = (
+            f"{output_base_path}_local-editing{self.config['output']['config_extension']}"
+        )
+        with open(stage_config_path, "w") as f:
+            json.dump(local_specs, f, indent=4)
+
+        # Execute via pipeline (will dispatch to MaskedExecutor)
+        self.execute_edit(stage_config_path, current_image_path, stage_output_path)
+
+        # Record in final adjustments
+        final_adjustments["local_edits"] = local_specs
+
+        print(f"Stage {stage + 1} local adjustments: {len(local_specs)} regions")
+        return all_reasoning, True
 
 
 # Convenience functions for backward compatibility

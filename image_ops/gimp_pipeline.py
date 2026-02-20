@@ -1,4 +1,4 @@
-from gimpfu import *
+from gimp3_compat import load_image, save_image
 import sys
 import os
 # Add the image_ops directory to the path to import gimp_ops
@@ -28,17 +28,15 @@ light_operations = ["Shadows", "Highlights", "Whites"]
 
 # DO NOT MODIFY; these paths will get filled in by the calling script
 
-config_path = 'data/puzzles2/configs/ip2p_LuminanceAdjustmentYellow/b.json'
-src_image_path = './ppr10k/export/temp_3.tif'
-output_image_path = './ppr10k/export/temp_3.tif'
+config_path = 'runs/zero_shot_balanced/a1329-IMG_3540_hsl.json'
+src_image_path = 'runs/zero_shot_balanced/a1329-IMG_3540.tif'
+output_image_path = 'runs/zero_shot_balanced/a1329-IMG_3540.tif'
 
 
 def execute(image_path, output_path):
     try:
         print("Loading image:", image_path)
-        image = pdb.gimp_file_load(image_path, image_path)
-        image = gimp.image_list()[0]
-        drawable = pdb.gimp_image_get_active_drawable(image)
+        image, drawable = load_image(image_path)
         print("Image loaded successfully")
 
         print("Reading config:", config_path)
@@ -55,7 +53,7 @@ def execute(image_path, output_path):
             adjust_light(drawable, 0, 0, whites)
 
         print("Saving image to:", output_path)
-        pdb.gimp_file_save(image, drawable, output_path, output_path)
+        save_image(image, output_path)
         print("Image saved successfully")
 
     except Exception as e:

@@ -1,0 +1,21 @@
+# MonetAgent Hierarchical System Configuration
+
+planner:
+  max_sub_goals: 6
+  temperature: 0.2
+  max_retries_per_sub_goal: 2
+
+quality:
+  min_pass_score: 0.6
+  temperature: 0.1
+  auto_approve_threshold: 0.85  # > this score skips human review
+
+context_folding:
+  max_history_tokens: 2000
+  keep_recent_turns: 3
+
+session:
+  base_dir: "./sessions"
+  checkpoint_backend: "sqlite"  # "memory" or "sqlite"
+  sqlite_path: "./sessions/checkpoints.db"
+  output_extension: ".png"

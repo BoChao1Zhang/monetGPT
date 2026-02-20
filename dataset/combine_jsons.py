@@ -29,7 +29,9 @@ def main():
     json_paths = [
         'data/sharegpt_puzzle_1.json',
         'data/json/sharegpt_puzzle_2json',
-        'data/json/sharegpt_puzzle_3.json'
+        'data/json/sharegpt_puzzle_3.json',
+        'data/sharegpt_puzzle_c.json',
+        'data/sharegpt_puzzle_mt.json',
     ]
 
     # Load and combine JSON entries

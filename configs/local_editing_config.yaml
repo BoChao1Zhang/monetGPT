@@ -1,0 +1,55 @@
+# Local Editing Configuration for MonetGPT
+# Mask model paths and thresholds
+
+# GroundingDINO configuration
+grounding_dino:
+  config_path: "external/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py"
+  checkpoint_path: "models/groundingdino_swint_ogc.pth"
+  box_threshold: 0.3
+  text_threshold: 0.25
+
+# SAM2 configuration
+sam2:
+  model_config: "sam2_hiera_l.yaml"
+  checkpoint_path: "models/sam2_hiera_large.pt"
+
+# Mask generation defaults
+mask_defaults:
+  feather_sigma: 3.0
+  feather_mode: "edge_inward"  # avoid mask spill across boundaries to reduce halo
+  luminance_softness: 0.1
+  min_mask_coverage: 0.02  # Minimum 2% coverage to consider a mask valid
+  semantic_threshold: 0.35      # binarize semantic masks to reduce patchy opacity
+  min_component_ratio: 0.0005   # remove tiny disconnected semantic islands
+  semantic_contract: 1          # shrink semantic masks slightly before feathering
+  matting_refine: true          # high-quality boundary refinement
+  matting_backend: "vitmatte"   # auto/vitmatte/cpu
+  matting_model_id: "hustvl/vitmatte-small-composition-1k"
+  matting_device: "cuda"
+  matting_fp16: true
+  matting_use_roi: true         # run matting only on unknown boundary ROI
+  matting_roi_margin: 32
+  trimap_radius: 6
+  trimap_threshold: 0.5
+  matting_method: "lkm"         # lkm/cf/knn
+  matting_max_dim: 1600         # downsample before matting for speed
+  matting_post_blur: 0.6
+  feather_after_matting: true
+  guided_refine: true           # edge-aware mask snapping with image guidance
+  guided_radius: 7
+  guided_eps: 0.0008
+
+# Semantic region prompts (default prompts for common regions)
+region_prompts:
+  skin: "human skin area"
+  sky: "sky"
+  hair: "human hair"
+  background: "background area"
+  vegetation: "trees, grass, plants"
+  clothing: "clothing, clothes"
+  face: "human face"
+  water: "water, river, lake, ocean"
+
+# Blending
+blending:
+  normalize_level: 3  # maskilayer normalize_level (0-5)

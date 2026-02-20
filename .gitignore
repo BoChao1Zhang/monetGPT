@@ -53,3 +53,7 @@ output
 .DS_Store
 
 ppr10k/
+runs/
+sessions/
+models/
+external/

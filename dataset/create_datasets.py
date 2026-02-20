@@ -456,11 +456,15 @@ def create_all_datasets(config_path="configs/dataset_config.yaml"):
     """Create all puzzle datasets."""
     print("Creating puzzle 1 dataset...")
     create_dataset_puzzle1(config_path)
-    
+
     print("Creating puzzle 2 dataset...")
     create_dataset_puzzle2(config_path)
-    
+
     print("Creating puzzle 3 dataset...")
     create_dataset_puzzle3(config_path)
-    
+
+    print("Creating puzzle C (local editing) dataset...")
+    from .create_datasets_local import create_dataset_puzzle_c
+    create_dataset_puzzle_c(config_path)
+
     print("All datasets created successfully!")
